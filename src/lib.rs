@@ -10,9 +10,9 @@ pub struct Lasrs {
 }
 
 impl Lasrs {
-    pub fn new(path: &str) -> Self {
+    pub fn new(path: impl AsRef<Path>) -> Self {
         Self {
-            blob: std::fs::read_to_string(Path::new(path))
+            blob: std::fs::read_to_string(path.as_ref())
                 .expect("Invalid path, verify existence of file"),
         }
     }
