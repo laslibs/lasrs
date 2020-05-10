@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate lazy_static;
-use crate::util::{metadata, remove_comment, SPACES_AND_DOT};
+use crate::util::{metadata, remove_comment, SPACES, SPACES_AND_DOT};
 use std::path::Path;
 
 mod util;
@@ -49,6 +49,24 @@ impl Lasrs {
             })
             .collect()
     }
+
+    pub fn data(self) -> Vec<Vec<f64>> {
+        self.blob
+            .splitn(2, "~A")
+            .nth(1)
+            .unwrap_or("")
+            .lines()
+            .skip(1)
+            .flat_map(|x| {
+                SPACES
+                    .split(x.trim())
+                    .map(|v| v.trim().parse::<f64>().unwrap_or(0.0))
+            })
+            .collect::<Vec<f64>>()
+            .chunks(self.headers().len())
+            .map(|ch| Vec::from(ch))
+            .collect()
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -82,5 +100,28 @@ mod tests {
             ],
             las.headers()
         );
+    }
+
+    #[test]
+    fn data_test() {
+        let las = Lasrs::new("./sample/example1.las");
+        let expected: Vec<Vec<f64>> = vec![
+            vec![1670.0, 123.45, 2550.0, 0.45, 123.45, 123.45, 110.2, 105.6],
+            vec![1669.875, 123.45, 2550.0, 0.45, 123.45, 123.45, 110.2, 105.6],
+            vec![1669.75, 123.45, 2550.0, 0.45, 123.45, 123.45, 110.2, 105.6],
+            vec![
+                1669.745, 123.45, 2550.0, -999.25, 123.45, 123.45, 110.2, 105.6,
+            ],
+        ];
+        assert_eq!(expected, las.data());
+        let las = Lasrs::new("./sample/A10.las");
+        let expected: Vec<Vec<f64>> = vec![
+            vec![1499.879, -999.25, -999.25, -999.25, -999.25, 0.0],
+            vec![1500.129, -999.25, -999.25, -999.25, -999.25, 0.0],
+            vec![1500.629, -999.25, -999.25, -999.25, -999.25, 0.0],
+            vec![1501.129, -999.25, -999.25, 0.270646, 0.0, 0.0],
+            vec![1501.629, 124.5799, 78.869453, 0.267428, 0.0, 0.0],
+        ];
+        assert_eq!(expected, &las.data()[0..5]);
     }
 }

@@ -8,7 +8,7 @@ lazy_static! {
     static ref LETTERS_AND_DOT_IN_SPACES: Regex = Regex::new("^\\w+\\s*[.]*s*").unwrap();
     static ref DIGITS_AND_SPACES: Regex = Regex::new("\\d+\\s*").unwrap();
     static ref LETTERS_IN_SPACES: Regex = Regex::new("\\s{2,}\\w*\\s{2,}").unwrap();
-    static ref SPACES: Regex = Regex::new("\\s+").unwrap();
+    pub static ref SPACES: Regex = Regex::new("\\s+").unwrap();
 }
 #[derive(Debug, PartialEq)]
 pub struct WellProps {
