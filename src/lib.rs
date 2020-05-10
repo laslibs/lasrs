@@ -6,7 +6,9 @@ use std::io::{BufReader, BufWriter, Read, Write};
 use std::{collections::HashMap, path::Path};
 
 mod util;
-use crate::util::{metadata, property, remove_comment, WellProps, SPACES, SPACES_AND_DOT};
+use util::{metadata, property, remove_comment, SPACES, SPACES_AND_DOT};
+
+pub use util::WellProps;
 
 pub struct Las {
     blob: String,
