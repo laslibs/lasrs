@@ -12,9 +12,9 @@ lazy_static! {
 }
 #[derive(Debug, PartialEq)]
 pub struct WellProps {
-    unit: String,
-    description: String,
-    value: String,
+    pub unit: String,
+    pub description: String,
+    pub value: String,
 }
 
 impl WellProps {
@@ -69,7 +69,7 @@ pub(crate) fn metadata(raw_str: &str) -> (Option<f64>, bool) {
 }
 
 #[test]
-pub(crate) fn test_metatdata() {
+fn test_metatdata() {
     let test = "~VERSION INFORMATION
     VERS.                          2.0 :   CWLS LOG ASCII STANDARD -VERSION 2.0
     WRAP.                          NO  :   ONE LINE PER DEPTH STEP
@@ -138,14 +138,7 @@ pub(crate) fn property(raw_str: &str, key: &str) -> HashMap<String, WellProps> {
                 value[value.len() - 1].trim()
             }
         };
-        prop_hash.insert(
-            title.to_string(),
-            WellProps {
-                unit: unit.to_string(),
-                description: description.to_string(),
-                value: value.to_string(),
-            },
-        );
+        prop_hash.insert(title.to_string(), WellProps::new(unit, &description, value));
     });
     prop_hash
 }

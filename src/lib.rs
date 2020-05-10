@@ -1,23 +1,27 @@
 #[macro_use]
 extern crate lazy_static;
-use crate::util::{metadata, remove_comment, SPACES, SPACES_AND_DOT};
-use std::path::Path;
+
+use std::fs::File;
+use std::io::{BufReader, BufWriter, Read, Write};
+use std::{collections::HashMap, path::Path};
 
 mod util;
+use crate::util::{metadata, property, remove_comment, WellProps, SPACES, SPACES_AND_DOT};
 
-pub struct Lasrs {
+pub struct Las {
     blob: String,
 }
 
-impl Lasrs {
+impl Las {
     pub fn new(path: impl AsRef<Path>) -> Self {
-        Self {
-            blob: std::fs::read_to_string(path.as_ref())
-                .expect("Invalid path, verify existence of file"),
-        }
+        let mut blob = String::new();
+        let f = File::open(path.as_ref()).expect("Invalid path, verify existence of file");
+        let mut br = BufReader::new(f);
+        br.read_to_string(&mut blob).expect("Unable to read file");
+        Self { blob }
     }
 
-    pub fn version(self) -> f64 {
+    pub fn version(&self) -> f64 {
         let (res, _) = metadata(&self.blob);
         match res {
             Some(v) => v,
@@ -25,12 +29,12 @@ impl Lasrs {
         }
     }
 
-    pub fn wrap(self) -> bool {
+    pub fn wrap(&self) -> bool {
         let (_, v) = metadata(&self.blob);
         v
     }
 
-    pub fn headers(self) -> Vec<String> {
+    pub fn headers(&self) -> Vec<String> {
         self.blob
             .splitn(3, "~C")
             .nth(1)
@@ -50,7 +54,7 @@ impl Lasrs {
             .collect()
     }
 
-    pub fn data(self) -> Vec<Vec<f64>> {
+    pub fn data(&self) -> Vec<Vec<f64>> {
         self.blob
             .splitn(2, "~A")
             .nth(1)
@@ -67,61 +71,74 @@ impl Lasrs {
             .map(|ch| Vec::from(ch))
             .collect()
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn version_test() {
-        let las = Lasrs::new("./sample/example1.las");
-        assert_eq!(las.version(), 2.0);
-    }
-    #[test]
-    fn wrap_test() {
-        let las = Lasrs::new("./sample/example1.las");
-        assert_eq!(las.wrap(), false);
-    }
-    #[test]
-    fn headers_test() {
-        let las = Lasrs::new("./sample/example1.las");
-        assert_eq!(
-            vec!["DEPT", "DT", "RHOB", "NPHI", "SFLU", "SFLA", "ILM", "ILD"],
-            las.headers()
-        );
-        let las = Lasrs::new("./sample/A10.las");
-        assert_eq!(
-            vec![
-                "DEPT",
-                "Perm",
-                "Gamma",
-                "Porosity",
-                "Fluvialfacies",
-                "NetGross"
-            ],
-            las.headers()
-        );
+
+    pub fn column(self, col: &str) -> Vec<f64> {
+        let index = self
+            .headers()
+            .into_iter()
+            .position(|x| x == col.to_owned())
+            .expect("msg");
+        self.data().into_iter().map(|x| x[index]).collect()
     }
 
-    #[test]
-    fn data_test() {
-        let las = Lasrs::new("./sample/example1.las");
-        let expected: Vec<Vec<f64>> = vec![
-            vec![1670.0, 123.45, 2550.0, 0.45, 123.45, 123.45, 110.2, 105.6],
-            vec![1669.875, 123.45, 2550.0, 0.45, 123.45, 123.45, 110.2, 105.6],
-            vec![1669.75, 123.45, 2550.0, 0.45, 123.45, 123.45, 110.2, 105.6],
-            vec![
-                1669.745, 123.45, 2550.0, -999.25, 123.45, 123.45, 110.2, 105.6,
-            ],
-        ];
-        assert_eq!(expected, las.data());
-        let las = Lasrs::new("./sample/A10.las");
-        let expected: Vec<Vec<f64>> = vec![
-            vec![1499.879, -999.25, -999.25, -999.25, -999.25, 0.0],
-            vec![1500.129, -999.25, -999.25, -999.25, -999.25, 0.0],
-            vec![1500.629, -999.25, -999.25, -999.25, -999.25, 0.0],
-            vec![1501.129, -999.25, -999.25, 0.270646, 0.0, 0.0],
-            vec![1501.629, 124.5799, 78.869453, 0.267428, 0.0, 0.0],
-        ];
-        assert_eq!(expected, &las.data()[0..5]);
+    pub fn column_count(&self) -> usize {
+        self.headers().len()
+    }
+
+    pub fn row_count(&self) -> usize {
+        self.data().len()
+    }
+
+    pub fn headers_and_desc(&self) -> Vec<(String, String)> {
+        property(self.blob.as_str(), "~C")
+            .into_iter()
+            .map(|(title, body)| (title, body.description))
+            .collect()
+    }
+
+    pub fn curve_params(&self) -> HashMap<String, WellProps> {
+        property(&self.blob, "~C")
+    }
+
+    pub fn well_info(&self) -> HashMap<String, WellProps> {
+        property(&self.blob, "~W")
+    }
+
+    pub fn log_params(&self) -> HashMap<String, WellProps> {
+        property(&self.blob, "~P")
+    }
+
+    pub fn other(&self) -> String {
+        self.blob
+            .splitn(2, "~O")
+            .nth(1)
+            .unwrap_or("")
+            .splitn(2, "~")
+            .nth(0)
+            .map(|x| remove_comment(x))
+            .unwrap_or(vec![])
+            .into_iter()
+            .skip(1)
+            .map(|x| x.to_string())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    pub fn to_csv(&self, filename: &str) {
+        let f = File::create(format!("{}.csv", filename)).expect("Unable to create csv file");
+        let mut f = BufWriter::new(f);
+        let mut headers = self.headers().join(",");
+        headers.push_str("\n");
+        f.write(headers.as_bytes())
+            .expect("Unable to write headers");
+        let data = self
+            .data()
+            .into_iter()
+            .map(|x| x.into_iter().map(|d| d.to_string()))
+            .map(|x| x.collect::<Vec<_>>().join(","))
+            .collect::<Vec<_>>()
+            .join("\n");
+        f.write_all(data.as_bytes())
+            .expect("Unable to write data to file");
     }
 }
