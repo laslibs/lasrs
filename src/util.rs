@@ -26,7 +26,7 @@ impl WellProps {
     }
 }
 
-pub fn remove_comment(raw_str: &str) -> Vec<&'_ str> {
+pub(crate) fn remove_comment(raw_str: &str) -> Vec<&'_ str> {
     raw_str
         .lines()
         .filter_map(|x| {
@@ -50,7 +50,7 @@ fn test_remove_comment() {
     assert_eq!(expected, remove_comment(test))
 }
 
-pub fn metadata(raw_str: &str) -> (Option<f64>, bool) {
+pub(crate) fn metadata(raw_str: &str) -> (Option<f64>, bool) {
     lazy_static! {
         static ref SPACEMATCH: Regex = Regex::new(r"\s+|\s*:").unwrap();
     }
@@ -68,7 +68,7 @@ pub fn metadata(raw_str: &str) -> (Option<f64>, bool) {
 }
 
 #[test]
-fn test_metatdata() {
+pub(crate) fn test_metatdata() {
     let test = "~VERSION INFORMATION
     VERS.                          2.0 :   CWLS LOG ASCII STANDARD -VERSION 2.0
     WRAP.                          NO  :   ONE LINE PER DEPTH STEP
@@ -91,7 +91,7 @@ fn test_metatdata() {
     assert_eq!((Some(2.0), false), metadata(test2));
 }
 
-pub fn property(raw_str: &str, key: &str) -> HashMap<String, WellProps> {
+pub(crate) fn property(raw_str: &str, key: &str) -> HashMap<String, WellProps> {
     let lines = raw_str
         .split(key)
         .nth(1)
