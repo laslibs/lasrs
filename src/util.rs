@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 lazy_static! {
     static ref DOT_IN_SPACES: Regex = Regex::new("\\s*[.]\\s+").unwrap();
+    pub static ref SPACES_AND_DOT: Regex = Regex::new("\\s+[.]").unwrap();
     static ref DOT_OR_SPACES: Regex = Regex::new("[.]|\\s+").unwrap();
     static ref LETTERS_AND_DOT_IN_SPACES: Regex = Regex::new("^\\w+\\s*[.]*s*").unwrap();
     static ref DIGITS_AND_SPACES: Regex = Regex::new("\\d+\\s*").unwrap();
