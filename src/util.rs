@@ -1,13 +1,39 @@
 use regex::Regex;
+use std::collections::HashMap;
 
-pub fn remove_comment(raw_str: &str) -> Vec<String> {
+lazy_static! {
+    static ref DOT_IN_SPACES: Regex = Regex::new("\\s*[.]\\s+").unwrap();
+    static ref DOT_OR_SPACES: Regex = Regex::new("[.]|\\s+").unwrap();
+    static ref LETTERS_AND_DOT_IN_SPACES: Regex = Regex::new("^\\w+\\s*[.]*s*").unwrap();
+    static ref DIGITS_AND_SPACES: Regex = Regex::new("\\d+\\s*").unwrap();
+    static ref LETTERS_IN_SPACES: Regex = Regex::new("\\s{2,}\\w*\\s{2,}").unwrap();
+    static ref SPACES: Regex = Regex::new("\\s+").unwrap();
+}
+#[derive(Debug, PartialEq)]
+pub struct WellProps {
+    unit: String,
+    description: String,
+    value: String,
+}
+
+impl WellProps {
+    fn new(unit: &str, description: &str, value: &str) -> Self {
+        Self {
+            unit: unit.to_string(),
+            description: description.to_string(),
+            value: value.to_string(),
+        }
+    }
+}
+
+pub fn remove_comment(raw_str: &str) -> Vec<&'_ str> {
     raw_str
         .lines()
         .filter_map(|x| {
-            if x.trim().starts_with("#") {
+            if x.trim().starts_with("#") || x.trim().len() < 1 {
                 None
             } else {
-                Some(x.trim().to_string())
+                Some(x.trim())
             }
         })
         .collect()
@@ -65,4 +91,104 @@ fn test_metatdata() {
     assert_eq!((Some(2.0), false), metadata(test2));
 }
 
-pub fn property(key: &str) {}
+pub fn property(raw_str: &str, key: &str) -> HashMap<String, WellProps> {
+    let lines = raw_str
+        .split(key)
+        .nth(1)
+        .unwrap()
+        .split('~')
+        .nth(0)
+        .map(|x| remove_comment(x))
+        .unwrap()
+        .into_iter()
+        .skip(1)
+        .collect::<Vec<_>>();
+
+    let mut prop_hash: HashMap<String, WellProps> = HashMap::new();
+
+    lines.into_iter().for_each(|line| {
+        let root = DOT_IN_SPACES.replace_all(line, "   none   ");
+        let title = DOT_OR_SPACES
+            .splitn(&root, 2)
+            .nth(0)
+            .unwrap_or("UNKNOWN")
+            .trim();
+        let unit = SPACES
+            .splitn(
+                LETTERS_AND_DOT_IN_SPACES
+                    .splitn(&root, 2)
+                    .nth(1)
+                    .unwrap_or(""),
+                2,
+            )
+            .nth(0)
+            .map(|x| if x.trim() == "none" { "" } else { x })
+            .unwrap_or("");
+        let description = root.split(':').nth(1).unwrap_or("").trim();
+        let description = DIGITS_AND_SPACES.replace_all(description, "");
+
+        let value = LETTERS_IN_SPACES
+            .split(root.split(":").nth(0).unwrap_or(""))
+            .collect::<Vec<_>>();
+        let value = {
+            if value.len() > 2 {
+                value[value.len() - 2].trim()
+            } else {
+                value[value.len() - 1].trim()
+            }
+        };
+        prop_hash.insert(
+            title.to_string(),
+            WellProps {
+                unit: unit.to_string(),
+                description: description.to_string(),
+                value: value.to_string(),
+            },
+        );
+    });
+    prop_hash
+}
+
+#[test]
+fn test_property() {
+    let test = "~Well
+    STRT .m       1499.879000 :
+    STOP .m       2416.379000 :
+    STEP .m     0.000000 :
+    NULL .        -999.250000 :
+    COMP.           : COMPANY
+    WELL.  A10   : WELL
+    FLD.            : FIELD
+    LOC.            : LOCATION
+    SRVC.           : SERVICE COMPANY
+    DATE.  Tuesday, July 02 2002 10:57:24   : DATE
+    PROV.           : PROVINCE
+    UWI.   02c62c82-552d-444d-bf6b-69cd07376368   : UNIQUE WELL ID
+    API.            : API NUMBER
+    #==================================================================
+    ~Curve
+    DEPT .m                   : DEPTH
+    Perm .m                   :
+    Gamma .m                  :
+    Porosity .m               :
+    Fluvialfacies .m          :
+    NetGross .m               :
+    ~Parameter
+    #==================================================================
+    ~Ascii";
+    let result = property(test, "~W");
+    assert_eq!(
+        &WellProps::new("m", "", "1499.879000"),
+        result.get("STRT").unwrap()
+    );
+    assert_eq!(
+        &WellProps::new("", "", "-999.250000"),
+        result.get("NULL").unwrap()
+    );
+    let result = property(test, "~C");
+    assert_eq!(
+        &WellProps::new("m", "DEPTH", ""),
+        result.get("DEPT").unwrap()
+    );
+    assert_eq!(&WellProps::new("m", "", ""), result.get("Gamma").unwrap());
+}
