@@ -45,7 +45,7 @@ Supports only version 2.0 of [LAS Specification](https://www.cwls.org/wp-content
 
 - Documentation
 
-  [Module documentation with examples](https://doc.rs/lasrs)
+  [Module documentation with examples](https://docs.rs/lasrs)
 
 - Test
 
