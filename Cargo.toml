@@ -1,6 +1,6 @@
 [package]
 name = "lasrs"
-version = "0.1.1"
+version = "0.1.2"
 repository="https://github.com/laslibs/lasrs"
 homepage="https://github.com/laslibs/lasrs"
 documentation="https://docs.rs/lasrs"
