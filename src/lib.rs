@@ -1,3 +1,10 @@
+//! #Lasrs
+//!
+//! lasrs is a crate used to parse geophysical well log files `.las`.
+//! Provides utilities for extracting strongly typed information from the files.
+//! Supports Las Version by [Canadian Well Logging Society](http://www.cwls.org)
+//! [Specification](https://www.cwls.org/wp-content/uploads/2017/02/Las2_Update_Feb2017.pdf)
+
 #[macro_use]
 extern crate lazy_static;
 
@@ -8,14 +15,14 @@ use std::{collections::HashMap, path::Path};
 mod util;
 use util::{metadata, property, remove_comment, SPACES, SPACES_AND_DOT};
 
-pub use util::WellProps;
+pub use util::WellProp;
 
 pub struct Las {
     blob: String,
 }
 
 impl Las {
-    pub fn new(path: impl AsRef<Path>) -> Self {
+    pub fn new<T: AsRef<Path>>(path: T) -> Self {
         let mut blob = String::new();
         let f = File::open(path.as_ref()).expect("Invalid path, verify existence of file");
         let mut br = BufReader::new(f);
@@ -38,7 +45,7 @@ impl Las {
 
     pub fn headers(&self) -> Vec<String> {
         self.blob
-            .splitn(3, "~C")
+            .splitn(2, "~C")
             .nth(1)
             .unwrap_or("")
             .splitn(2, "~")
@@ -98,15 +105,15 @@ impl Las {
             .collect()
     }
 
-    pub fn curve_params(&self) -> HashMap<String, WellProps> {
+    pub fn curve_params(&self) -> HashMap<String, WellProp> {
         property(&self.blob, "~C")
     }
 
-    pub fn well_info(&self) -> HashMap<String, WellProps> {
+    pub fn well_info(&self) -> HashMap<String, WellProp> {
         property(&self.blob, "~W")
     }
 
-    pub fn log_params(&self) -> HashMap<String, WellProps> {
+    pub fn log_params(&self) -> HashMap<String, WellProp> {
         property(&self.blob, "~P")
     }
 

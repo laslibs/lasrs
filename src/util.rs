@@ -10,15 +10,35 @@ lazy_static! {
     static ref LETTERS_IN_SPACES: Regex = Regex::new("\\s{2,}\\w*\\s{2,}").unwrap();
     pub(crate) static ref SPACES: Regex = Regex::new("\\s+").unwrap();
 }
+
+/// Wellprop represents an entry in every sections
+/// excluding ~O, ~A and ~V (other, data and version sections respectively)
 #[derive(Debug, PartialEq)]
-pub struct WellProps {
+pub struct WellProp {
+    /// unit of measurement
     pub unit: String,
+    /// entry description
     pub description: String,
+    /// entry value
     pub value: String,
 }
 
-impl WellProps {
-    fn new(unit: &str, description: &str, value: &str) -> Self {
+impl WellProp {
+    /// Returns a Wellprop
+    ///
+    /// # Arguments
+    ///
+    /// * `unit` - string slice
+    /// * `description` - string slice
+    /// * `value` - string slice
+    ///
+    /// # Example
+    /// ```
+    /// use lasrs::WellProp;
+    /// let well_prop = WellProp::new("DEGC", "BOTTOM HOLE TEMPERATURE", "35.5000");
+    /// assert_eq!(well_prop.unit, "DEGC".to_owned());
+    /// ```
+    pub fn new(unit: &str, description: &str, value: &str) -> Self {
         Self {
             unit: unit.to_string(),
             description: description.to_string(),
@@ -27,7 +47,8 @@ impl WellProps {
     }
 }
 
-pub(crate) fn remove_comment(raw_str: &str) -> Vec<&'_ str> {
+// Removes lines that starts with `#`, returns Vec<&str> of uncommented lines
+pub(crate) fn remove_comment(raw_str: &str) -> Vec<&str> {
     raw_str
         .lines()
         .filter_map(|x| {
@@ -40,17 +61,11 @@ pub(crate) fn remove_comment(raw_str: &str) -> Vec<&'_ str> {
         .collect()
 }
 
-#[test]
-fn test_remove_comment() {
-    let test = "#remove me
-    #    still remove me
-    retain me
-      retain me but trimmed  
-    123 retain";
-    let expected = vec!["retain me", "retain me but trimmed", "123 retain"];
-    assert_eq!(expected, remove_comment(test))
-}
-
+// Extracts version number and wrap mode
+// Refers to whether a wrap around mode was used in the data section. If the wrap mode is
+// false, there is no limit to the line length. If wrap mode is used, the depth value will be on its
+// own line and all lines of data will be no longer than 80 characters (including carriage return
+// and line feed).
 pub(crate) fn metadata(raw_str: &str) -> (Option<f64>, bool) {
     lazy_static! {
         static ref SPACEMATCH: Regex = Regex::new(r"\s+|\s*:").unwrap();
@@ -68,31 +83,9 @@ pub(crate) fn metadata(raw_str: &str) -> (Option<f64>, bool) {
     (m[0].parse::<f64>().ok(), m[1].to_lowercase() == "yes")
 }
 
-#[test]
-fn test_metatdata() {
-    let test = "~VERSION INFORMATION
-    VERS.                          2.0 :   CWLS LOG ASCII STANDARD -VERSION 2.0
-    WRAP.                          NO  :   ONE LINE PER DEPTH STEP
-    ~WELL INFORMATION";
-    assert_eq!((Some(2.0), false), metadata(test));
-
-    let test1 = "~VERSION INFORMATION
-    VERS.                           :   CWLS LOG ASCII STANDARD -VERSION 2.0
-    WRAP.                           :   ONE LINE PER DEPTH STEP
-    ~WELL INFORMATION";
-    assert_eq!((None, false), metadata(test1));
-
-    let test2 = "# LAS format log file from PETREL
-    # Project units are specified as depth units
-    #==================================================================
-    ~Version Information
-    VERS.   2.0:
-    WRAP.   NO:
-    #==================================================================";
-    assert_eq!((Some(2.0), false), metadata(test2));
-}
-
-pub(crate) fn property(raw_str: &str, key: &str) -> HashMap<String, WellProps> {
+// Returns all the WellProp in a section
+// key - section signature, raw_str - string to extract them from
+pub(crate) fn property(raw_str: &str, key: &str) -> HashMap<String, WellProp> {
     let lines = raw_str
         .split(key)
         .nth(1)
@@ -105,7 +98,7 @@ pub(crate) fn property(raw_str: &str, key: &str) -> HashMap<String, WellProps> {
         .skip(1)
         .collect::<Vec<_>>();
 
-    let mut prop_hash: HashMap<String, WellProps> = HashMap::new();
+    let mut prop_hash: HashMap<String, WellProp> = HashMap::new();
 
     lines.into_iter().for_each(|line| {
         let root = DOT_IN_SPACES.replace_all(line, "   none   ");
@@ -138,14 +131,50 @@ pub(crate) fn property(raw_str: &str, key: &str) -> HashMap<String, WellProps> {
                 value[value.len() - 1].trim()
             }
         };
-        prop_hash.insert(title.to_string(), WellProps::new(unit, &description, value));
+        prop_hash.insert(title.to_string(), WellProp::new(unit, &description, value));
     });
     prop_hash
 }
 
-#[test]
-fn test_property() {
-    let test = "~Well
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_remove_comment() {
+        let test = "#remove me
+    #    still remove me
+    retain me
+      retain me but trimmed  
+    123 retain";
+        let expected = vec!["retain me", "retain me but trimmed", "123 retain"];
+        assert_eq!(expected, remove_comment(test))
+    }
+    #[test]
+    fn test_metatdata() {
+        let test = "~VERSION INFORMATION
+        VERS.                          2.0 :   CWLS LOG ASCII STANDARD -VERSION 2.0
+        WRAP.                          NO  :   ONE LINE PER DEPTH STEP
+        ~WELL INFORMATION";
+        assert_eq!((Some(2.0), false), metadata(test));
+        let test1 = "~VERSION INFORMATION
+        VERS.                           :   CWLS LOG ASCII STANDARD -VERSION 2.0
+        WRAP.                           :   ONE LINE PER DEPTH STEP
+        ~WELL INFORMATION";
+        assert_eq!((None, false), metadata(test1));
+        let test2 = "# LAS format log file from PETREL
+        # Project units are specified as depth units
+        #==================================================================
+        ~Version Information
+        VERS.   2.0:
+        WRAP.   NO:
+        #==================================================================";
+        assert_eq!((Some(2.0), false), metadata(test2));
+    }
+
+    #[test]
+    fn test_property() {
+        let test = "~Well
     STRT .m       1499.879000 :
     STOP .m       2416.379000 :
     STEP .m     0.000000 :
@@ -170,19 +199,20 @@ fn test_property() {
     ~Parameter
     #==================================================================
     ~Ascii";
-    let result = property(test, "~W");
-    assert_eq!(
-        &WellProps::new("m", "", "1499.879000"),
-        result.get("STRT").unwrap()
-    );
-    assert_eq!(
-        &WellProps::new("", "", "-999.250000"),
-        result.get("NULL").unwrap()
-    );
-    let result = property(test, "~C");
-    assert_eq!(
-        &WellProps::new("m", "DEPTH", ""),
-        result.get("DEPT").unwrap()
-    );
-    assert_eq!(&WellProps::new("m", "", ""), result.get("Gamma").unwrap());
+        let result = property(test, "~W");
+        assert_eq!(
+            &WellProp::new("m", "", "1499.879000"),
+            result.get("STRT").unwrap()
+        );
+        assert_eq!(
+            &WellProp::new("", "", "-999.250000"),
+            result.get("NULL").unwrap()
+        );
+        let result = property(test, "~C");
+        assert_eq!(
+            &WellProp::new("m", "DEPTH", ""),
+            result.get("DEPT").unwrap()
+        );
+        assert_eq!(&WellProp::new("m", "", ""), result.get("Gamma").unwrap());
+    }
 }
