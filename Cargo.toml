@@ -1,9 +1,13 @@
 [package]
 name = "lasrs"
-version = "0.1.0"
+version = "0.1.2"
+repository="https://github.com/laslibs/lasrs"
+homepage="https://github.com/laslibs/lasrs"
+documentation="https://docs.rs/lasrs"
 authors = ["iykekings <iykekings36@gmail.com>"]
 edition = "2018"
-description = "A library crate for parsing geophysical well log (.las) files"
+readme="README.md"
+description = "A library for parsing geophysical well log (.las) files"
 license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
