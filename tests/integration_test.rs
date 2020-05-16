@@ -2,17 +2,17 @@ use lasrs::Las;
 
 #[test]
 fn version_test() {
-    let las = Las::new("./sample/example1.las");
+    let las = Las::new("./sample/example.las");
     assert_eq!(las.version(), 2.0);
 }
 #[test]
 fn wrap_test() {
-    let las = Las::new("./sample/example1.las");
+    let las = Las::new("./sample/example.las");
     assert_eq!(las.wrap(), false);
 }
 #[test]
 fn headers_test() {
-    let las = Las::new("./sample/example1.las");
+    let las = Las::new("./sample/example.las");
     assert_eq!(
         vec!["DEPT", "DT", "RHOB", "NPHI", "SFLU", "SFLA", "ILM", "ILD"],
         las.headers()
@@ -33,7 +33,7 @@ fn headers_test() {
 
 #[test]
 fn data_test() {
-    let las = Las::new("./sample/example1.las");
+    let las = Las::new("./sample/example.las");
     let expected: Vec<Vec<f64>> = vec![
         vec![1670.0, 123.45, 2550.0, 0.45, 123.45, 123.45, 110.2, 105.6],
         vec![1669.875, 123.45, 2550.0, 0.45, 123.45, 123.45, 110.2, 105.6],
@@ -56,7 +56,7 @@ fn data_test() {
 
 #[test]
 fn test_column() {
-    let las = Las::new("./sample/example1.las");
+    let las = Las::new("./sample/example.las");
     assert_eq!(
         vec![1670.0, 1669.875, 1669.75, 1669.745],
         las.column("DEPT")
@@ -65,13 +65,13 @@ fn test_column() {
 
 #[test]
 fn test_counts() {
-    let las = Las::new("./sample/example1.las");
+    let las = Las::new("./sample/example.las");
     assert_eq!(las.column_count(), 8);
     assert_eq!(las.row_count(), 4);
 }
 #[test]
 fn test_header_and_desc() {
-    let las = Las::new("./sample/example1.las");
+    let las = Las::new("./sample/example.las");
     let mut expected = vec![
         ("DEPT", "DEPTH"),
         ("DT", "SONIC TRANSIT TIME"),
@@ -94,7 +94,7 @@ fn test_header_and_desc() {
 
 #[test]
 fn other_test() {
-    let las = Las::new("./sample/example1.las");
+    let las = Las::new("./sample/example.las");
     let expected = [
         "Note: The logging tools became stuck at 625 metres causing the data",
         "between 625 metres and 615 metres to be invalid.",
@@ -109,7 +109,7 @@ fn other_test() {
 #[test]
 fn csv_test() {
     use std::fs;
-    let las = Las::new("./sample/example1.las");
+    let las = Las::new("./sample/example.las");
     las.to_csv("example");
     let result = fs::read_to_string("example.csv").expect("File was not created");
     let expected = [
