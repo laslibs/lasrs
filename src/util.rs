@@ -26,13 +26,13 @@ pub struct WellProp {
 impl WellProp {
     /// Returns a Wellprop
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `unit` - string slice
     /// * `description` - string slice
     /// * `value` - string slice
     ///
-    /// # Example
+    /// ## Example
     /// ```
     /// use lasrs::WellProp;
     /// let well_prop = WellProp::new("DEGC", "BOTTOM HOLE TEMPERATURE", "35.5000");
