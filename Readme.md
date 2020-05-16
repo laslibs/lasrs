@@ -11,7 +11,7 @@ Supports only version 2.0 of [LAS Specification](https://www.cwls.org/wp-content
 
   ```toml
   [dependencies]
-  regex = "1"
+  lasrs = "0.1.3"
 
   ```
 
