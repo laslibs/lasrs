@@ -21,7 +21,7 @@ Supports only version 2.0 of [LAS Specification](https://www.cwls.org/wp-content
   extern crate lasrs;
   ```
 
-  A example of reading version of well log headers.
+  An example of reading well log headers.
 
   ```rust
   use lasrs::Las;
