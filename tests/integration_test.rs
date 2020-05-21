@@ -1,4 +1,4 @@
-use lasrs::Las;
+use lasrs::{Las, WellProp};
 
 #[test]
 fn version_test() {
@@ -121,4 +121,58 @@ fn csv_test() {
     ];
     assert_eq!(expected.join("\n").to_string(), result);
     fs::remove_file("example.csv").expect("Could not clean up after test");
+}
+
+#[test]
+fn well_section_test() {
+    let las = Las::new("./sample/example.las");
+    let well_section = las.well_info();
+    assert_eq!(
+    &WellProp::new("M", "START DEPTH", "1670.0000"),
+        well_section.get("STRT").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("M", "STOP DEPTH", "1669.7500"),
+        well_section.get("STOP").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("M", "STEP", "-0.1250"),
+        well_section.get("STEP").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("", "NULL VALUE", "-999.25"),
+        well_section.get("NULL").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("", "COMPANY", "ANY OIL COMPANY INC."),
+        well_section.get("COMP").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("", "WELL", "ANY ET AL 12-34-12-34"),
+        well_section.get("WELL").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("", "FIELD", "WILDCAT"),
+        well_section.get("FLD").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("", "LOCATION", "12-34-12-34W5M"),
+        well_section.get("LOC").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("", "PROVINCE", "ALBERTA"),
+        well_section.get("PROV").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("", "SERVICE COMPANY", "ANY LOGGING COMPANY INC."),
+        well_section.get("SRVC").unwrap()
+    );
+    assert_eq!(
+    &WellProp::new("", "LOG DATE", "13-DEC-86"),
+        well_section.get("DATE").unwrap()
+    );
+    assert_eq!(
+        &WellProp::new("", "UNIQUE WELL ID", "100123401234W500"),
+        well_section.get("UWI").unwrap()
+    );
 }

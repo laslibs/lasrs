@@ -101,7 +101,7 @@ pub(crate) fn property(raw_str: &str, key: &str) -> HashMap<String, WellProp> {
     let mut prop_hash: HashMap<String, WellProp> = HashMap::new();
 
     lines.into_iter().for_each(|line| {
-        let root = DOT_IN_SPACES.replace_all(line, "   none   ");
+        let root = DOT_IN_SPACES.replace(line, "   none   ");
         let title = DOT_OR_SPACES
             .splitn(&root, 2)
             .nth(0)
@@ -215,4 +215,32 @@ mod test {
         );
         assert_eq!(&WellProp::new("m", "", ""), result.get("Gamma").unwrap());
     }
+
+    #[test]
+    fn test_() {
+        let test = "~Well
+	STRT    .M              1670.0000                :START DEPTH
+	STOP    .M              1669.7500                :STOP DEPTH
+	STEP    .M              -0.1250                  :STEP
+	NULL    .               -999.25                  :NULL VALUE
+	COMP    .       ANY OIL COMPANY INC.             :COMPANY
+	WELL    .       ANY ET AL 12-34-12-34            :WELL
+	FLD     .       WILDCAT                          :FIELD
+	LOC     .       12-34-12-34W5M                   :LOCATION
+	PROV    .       ALBERTA                          :PROVINCE
+	SRVC    .       ANY LOGGING COMPANY INC.         :SERVICE COMPANY
+	DATE    .       13-DEC-86                        :LOG DATE
+	UWI     .       100123401234W500                 :UNIQUE WELL ID
+    ";
+		let result = property(test, "~W");
+		assert_eq!(
+			&WellProp::new("", "COMPANY", "ANY OIL COMPANY INC."),
+			result.get("COMP").unwrap()
+		);
+		assert_eq!(
+			&WellProp::new("", "SERVICE COMPANY", "ANY LOGGING COMPANY INC."),
+			result.get("SRVC").unwrap()
+		);
+	}
 }
+
