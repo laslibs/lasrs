@@ -66,34 +66,31 @@ pub(crate) fn remove_comment(raw_str: &str) -> Vec<&str> {
 // false, there is no limit to the line length. If wrap mode is used, the depth value will be on its
 // own line and all lines of data will be no longer than 80 characters (including carriage return
 // and line feed).
-pub(crate) fn metadata(raw_str: &str) -> (Option<f64>, bool) {
+pub(crate) fn metadata(raw_str: &str) -> Option<(Option<f64>, bool)> {
     lazy_static! {
         static ref SPACEMATCH: Regex = Regex::new(r"\s+|\s*:").unwrap();
     }
     let m = raw_str
         .split('~')
         .nth(1)
-        .map(|x| remove_comment(x))
-        .unwrap()
+        .map(|x| remove_comment(x))?
         .into_iter()
         .skip(1)
         .take(2)
         .map(|x| SPACEMATCH.splitn(&x, 3).nth(1).unwrap_or("").to_string())
         .collect::<Vec<_>>();
-    (m[0].parse::<f64>().ok(), m[1].to_lowercase() == "yes")
+    Some((m[0].parse::<f64>().ok(), m[1].to_lowercase() == "yes"))
 }
 
 // Returns all the WellProp in a section
 // key - section signature, raw_str - string to extract them from
-pub(crate) fn property(raw_str: &str, key: &str) -> HashMap<String, WellProp> {
+pub(crate) fn property(raw_str: &str, key: &str) -> Option<HashMap<String, WellProp>> {
     let lines = raw_str
         .split(key)
-        .nth(1)
-        .unwrap()
+        .nth(1)?
         .split('~')
         .nth(0)
-        .map(|x| remove_comment(x))
-        .unwrap()
+        .map(|x| remove_comment(x))?
         .into_iter()
         .skip(1)
         .collect::<Vec<_>>();
@@ -133,7 +130,7 @@ pub(crate) fn property(raw_str: &str, key: &str) -> HashMap<String, WellProp> {
         };
         prop_hash.insert(title.to_string(), WellProp::new(unit, &description, value));
     });
-    prop_hash
+    Some(prop_hash)
 }
 
 #[cfg(test)]
@@ -156,12 +153,12 @@ mod test {
         VERS.                          2.0 :   CWLS LOG ASCII STANDARD -VERSION 2.0
         WRAP.                          NO  :   ONE LINE PER DEPTH STEP
         ~WELL INFORMATION";
-        assert_eq!((Some(2.0), false), metadata(test));
+        assert_eq!(Some((Some(2.0), false)), metadata(test));
         let test1 = "~VERSION INFORMATION
         VERS.                           :   CWLS LOG ASCII STANDARD -VERSION 2.0
         WRAP.                           :   ONE LINE PER DEPTH STEP
         ~WELL INFORMATION";
-        assert_eq!((None, false), metadata(test1));
+        assert_eq!(Some((None, false)), metadata(test1));
         let test2 = "# LAS format log file from PETREL
         # Project units are specified as depth units
         #==================================================================
@@ -169,7 +166,7 @@ mod test {
         VERS.   2.0:
         WRAP.   NO:
         #==================================================================";
-        assert_eq!((Some(2.0), false), metadata(test2));
+        assert_eq!(Some((Some(2.0), false)), metadata(test2));
     }
 
     #[test]
@@ -199,7 +196,7 @@ mod test {
     ~Parameter
     #==================================================================
     ~Ascii";
-        let result = property(test, "~W");
+        let result = property(test, "~W").unwrap();
         assert_eq!(
             &WellProp::new("m", "", "1499.879000"),
             result.get("STRT").unwrap()
@@ -208,7 +205,7 @@ mod test {
             &WellProp::new("", "", "-999.250000"),
             result.get("NULL").unwrap()
         );
-        let result = property(test, "~C");
+        let result = property(test, "~C").unwrap();
         assert_eq!(
             &WellProp::new("m", "DEPTH", ""),
             result.get("DEPT").unwrap()
@@ -232,15 +229,14 @@ mod test {
 	DATE    .       13-DEC-86                        :LOG DATE
 	UWI     .       100123401234W500                 :UNIQUE WELL ID
     ";
-		let result = property(test, "~W");
-		assert_eq!(
-			&WellProp::new("", "COMPANY", "ANY OIL COMPANY INC."),
-			result.get("COMP").unwrap()
-		);
-		assert_eq!(
-			&WellProp::new("", "SERVICE COMPANY", "ANY LOGGING COMPANY INC."),
-			result.get("SRVC").unwrap()
-		);
-	}
+        let result = property(test, "~W").unwrap();
+        assert_eq!(
+            &WellProp::new("", "COMPANY", "ANY OIL COMPANY INC."),
+            result.get("COMP").unwrap()
+        );
+        assert_eq!(
+            &WellProp::new("", "SERVICE COMPANY", "ANY LOGGING COMPANY INC."),
+            result.get("SRVC").unwrap()
+        );
+    }
 }
-
