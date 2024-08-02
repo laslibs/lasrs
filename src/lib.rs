@@ -57,11 +57,9 @@ impl Las {
     /// assert_eq!(log.version(), 2.0);
     /// ```
     pub fn version(&self) -> f64 {
-        let (res, _) = metadata(&self.blob);
-        match res {
-            Some(v) => v,
-            None => panic!("Invalid version"),
-        }
+        metadata(&self.blob)
+            .and_then(|(v, _)| v)
+            .expect("Invalid version")
     }
 
     /// Returns a `bool` denoting the wrap mode
@@ -74,8 +72,7 @@ impl Las {
     /// assert_eq!(log.wrap(), false);
     /// ```
     pub fn wrap(&self) -> bool {
-        let (_, v) = metadata(&self.blob);
-        v
+        metadata(&self.blob).map(|(_, w)| w).unwrap_or_default()
     }
 
     /// Returns `Vec<String>` representing the titles of the curves (~C),
@@ -99,7 +96,7 @@ impl Las {
             .splitn(2, "~")
             .nth(0)
             .map(|x| remove_comment(x))
-            .unwrap_or(vec![])
+            .unwrap_or_default()
             .into_iter()
             .skip(1)
             .filter_map(|x| {
@@ -213,6 +210,7 @@ impl Las {
     /// ```
     pub fn headers_and_desc(&self) -> Vec<(String, String)> {
         property(self.blob.as_str(), "~C")
+            .unwrap_or_default()
             .into_iter()
             .map(|(title, body)| (title, body.description))
             .collect()
@@ -232,7 +230,7 @@ impl Las {
     /// );
     /// ```
     pub fn curve_params(&self) -> HashMap<String, WellProp> {
-        property(&self.blob, "~C")
+        property(&self.blob, "~C").unwrap_or_default()
     }
 
     /// Returns `HashMap<String, WellProp>` containing all the `WellProp`(s) in a ~W (well) section
@@ -249,7 +247,7 @@ impl Las {
     /// );
     /// ```
     pub fn well_info(&self) -> HashMap<String, WellProp> {
-        property(&self.blob, "~W")
+        property(&self.blob, "~W").unwrap_or_default()
     }
 
     /// Returns `HashMap<String, WellProp>` containing all the `WellProp`(s) in a ~P (parameter) section
@@ -265,7 +263,7 @@ impl Las {
     ///     params.get("MUD").unwrap()
     /// );
     pub fn log_params(&self) -> HashMap<String, WellProp> {
-        property(&self.blob, "~P")
+        property(&self.blob, "~P").unwrap_or_default()
     }
 
     /// Returns a `String` representing extra information in ~O (other) section
